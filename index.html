@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartSign</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #chat { height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px;}
+        .msg { margin: 10px 0; padding: 10px; border-radius: 10px; max-width: 80%; }
+        .user { background: #eee; margin-left: auto; }
+        .bot { background: #fff; border: 1px solid #ddd; }
+        video { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+        input { width: 75%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; background: black; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #loader { display: none; color: #666; font-size: 0.9em; text-align: center; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h2>SmartSign</h2>
+    <div id="chat">
+        <div class="msg bot">Hello! Enter a sentence to generate ISL video.</div>
+    </div>
+    <div style="display:flex; gap:5px;">
+        <input type="text" id="inp" placeholder="Type here..." onkeypress="if(event.key==='Enter') send()">
+        <button onclick="send()" id="btn">Send</button>
+    </div>
+    <div id="loader">Generating video... (this takes 10-20 seconds)</div>
+
+    <script>
+        async function send() {
+            let txt = document.getElementById('inp').value;
+            if(!txt) return;
+            
+            // UI
+            let chat = document.getElementById('chat');
+            chat.innerHTML += `<div class="msg user">${txt}</div>`;
+            document.getElementById('inp').value = '';
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('btn').disabled = true;
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                // Fetch
+                let res = await fetch('/process_sign', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: txt})
+                });
+
+                if(!res.ok) {
+                    let err = await res.json();
+                    throw new Error(err.error || 'Server Error');
+                }
+
+                // Show Video
+                let blob = await res.blob();
+                let url = URL.createObjectURL(blob);
+                chat.innerHTML += `<div class="msg bot"><video controls autoplay src="${url}"></video></div>`;
+            } catch(e) {
+                chat.innerHTML += `<div class="msg bot" style="color:red">Error: ${e.message}</div>`;
+            }
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('btn').disabled = false;
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>
